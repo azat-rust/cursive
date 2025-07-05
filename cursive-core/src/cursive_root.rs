@@ -39,7 +39,8 @@ pub struct Cursive {
 
     menubar: views::Menubar,
 
-    pub(crate) needs_clear: bool,
+    needs_clear: bool,
+    needs_complete_clear: bool,
 
     running: bool,
 
@@ -97,6 +98,7 @@ impl Cursive {
             menubar: views::Menubar::new(),
             last_size: Vec2::zero(),
             needs_clear: true,
+            needs_complete_clear: false,
             running: true,
             cb_source,
             cb_sink,
@@ -128,7 +130,11 @@ impl Cursive {
 
         let printer = Printer::new(size, &self.theme, buffer);
 
-        if self.needs_clear {
+        if self.needs_complete_clear {
+            buffer.write().clear();
+            self.needs_complete_clear = false;
+            self.needs_clear = false;
+        } else if self.needs_clear {
             printer.clear();
             self.needs_clear = false;
         }
@@ -406,6 +412,16 @@ impl Cursive {
     /// Users rarely have to call this directly.
     pub fn clear(&mut self) {
         self.needs_clear = true;
+    }
+
+    /// Resets all cells in the buffer, forcing a full redraw on the next frame.
+    ///
+    /// [`clear`](Self::clear) fills the screen with themed spaces, which is
+    /// enough for normal repaints. This method instead invalidates every cell,
+    /// so the next flush sends the entire screen to the terminal. Call it after
+    /// returning from an external program that wrote to the same terminal.
+    pub fn complete_clear(&mut self) {
+        self.needs_complete_clear = true;
     }
 
     /// Loads a theme from the given file.
